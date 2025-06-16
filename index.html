@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Presença - Catequese</title>
+  <style>
+    :root {
+      --verde-claro: #d4edda;
+      --vermelho-claro: #f8d7da;
+      --cinza: #ccc;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fff;
+      color: #333;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h1, h2 {
+      text-align: center;
+      font-size: 5vw;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      overflow-x: auto;
+      display: block;
+    }
+
+    th, td {
+      border: 1px solid var(--cinza);
+      padding: 10px;
+      text-align: center;
+      font-size: 4vw;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin: 4px;
+      font-size: 4vw;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #eee;
+    }
+
+    .presente {
+      background-color: var(--verde-claro);
+    }
+
+    .ausente {
+      background-color: var(--vermelho-claro);
+    }
+
+    #relatorioMensal {
+      margin-top: 30px;
+      font-size: 4vw;
+    }
+
+    @media (min-width: 780px) {
+      h1, h2 {
+        font-size: 2rem;
+      }
+
+      th, td, button, #relatorioMensal {
+        font-size: 1rem;
+      }
+
+      button {
+        padding: 6px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<h1>Controle de Presença - Catequese</h1>
+<h2 id="dataHoje"></h2>
+
+<table>
+  <thead>
+  <tr>
+    <th>Nome</th>
+    <th>Status</th>
+    <th>Ações</th>
+  </tr>
+  </thead>
+  <tbody id="tabelaAlunos"></tbody>
+</table>
+
+<h2>Presenças do Mês</h2>
+<div id="relatorioMensal"></div>
+
+<script>
+  const alunos = ["Cleber", "Kaio", "Davi Manzano", "Davi Lucas", "Joao Miguel", "Mateus"];
+  const storageKey = 'presencasCatequese';
+
+  const hoje = new Date();
+  const dataFormatada = hoje.toLocaleDateString('pt-BR');
+  const ehSegunda = hoje.getDay() === 1;
+  document.getElementById('dataHoje').textContent =
+          `${dataFormatada} (${ehSegunda ? 'Segunda-feira' : 'Não é dia de aula'})`;
+
+  const presencas = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+  if (!presencas[dataFormatada]) {
+    presencas[dataFormatada] = {};
+    alunos.forEach(nome => presencas[dataFormatada][nome] = 'Ausente');
+    salvarPresencas();
+  }
+
+  function salvarPresencas() {
+    localStorage.setItem(storageKey, JSON.stringify(presencas));
+  }
+
+  function atualizarTabela() {
+    const tbody = document.getElementById('tabelaAlunos');
+    tbody.innerHTML = '';
+
+    alunos.forEach(nome => {
+      const status = presencas[dataFormatada][nome] || 'Ausente';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+                <td>${nome}</td>
+                <td class="${status === 'Presente' ? 'presente' : 'ausente'}">${status}</td>
+                <td>
+                    <button onclick="marcarPresenca('${nome}', 'Presente')">Presente</button>
+                    <button onclick="marcarPresenca('${nome}', 'Ausente')">Ausente</button>
+                </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function marcarPresenca(nome, status) {
+    presencas[dataFormatada][nome] = status;
+    salvarPresencas();
+    atualizarTabela();
+    gerarRelatorioMensal();
+  }
+
+  function gerarRelatorioMensal() {
+    const div = document.getElementById('relatorioMensal');
+    div.innerHTML = '';
+
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    const relatorio = {};
+
+    for (const data in presencas) {
+      const d = new Date(data.split('/').reverse().join('-'));
+      if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) {
+        for (const nome in presencas[data]) {
+          if (!relatorio[nome]) relatorio[nome] = [];
+          relatorio[nome].push(`${data}: ${presencas[data][nome]}`);
+        }
+      }
+    }
+
+    for (const nome in relatorio) {
+      const bloco = document.createElement('div');
+      bloco.innerHTML = `<strong>${nome}</strong><br>${relatorio[nome].join('<br>')}<br><br>`;
+      div.appendChild(bloco);
+    }
+  }
+
+  atualizarTabela();
+  gerarRelatorioMensal();
+</script>
+</body>
+</html>
